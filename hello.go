@@ -2,10 +2,14 @@ package main
 
 import (
 	"net"
+
+	"github.com/golang-collections/go-datastructures/bitarray"
 )
 
 func main() {
 }
+
+const dhtAddrByteCount uint = 20
 
 type KTree struct {
 	left  *innerKTree
@@ -20,7 +24,7 @@ type innerKTree struct {
 }
 
 type NodeData struct {
-	dhtAddress []byte
+	dhtAddress [dhtAddrByteCount]byte
 	netAddress net.Addr
 }
 
@@ -43,22 +47,50 @@ func makeInnerKTree() *innerKTree {
 func (tree *KTree) Insert(data NodeData) {
 	var runningTree *innerKTree
 	var runningIdx uint = 1
+	prefix := bitarray.NewBitArray(uint64(dhtAddrByteCount * 8))
 	dhtAddr := data.dhtAddress
 
-	if !getBit(dhtAddr, 0) {
+	if !getBit(dhtAddr[:], 0) {
 		runningTree = tree.left
 	} else {
 		runningTree = tree.right
 	}
 
 	for {
-		runningBit := getBit(dhtAddr, runningIdx)
+		runningBit := getBit(dhtAddr[:], runningIdx)
+
+		if runningBit {
+			prefix.SetBit(uint64(runningIdx))
+		}
 
 		if !runningBit && runningTree.left == nil ||
 			runningBit && runningTree.right == nil {
-			runningTree.data = append(runningTree.data, data)
 
-			// TODO: Add recursive branching if the K-Bucket is full
+			if uint(len(runningTree.data)) == tree.k {
+				// TODO: Add recursive branching if the K-Bucket is full
+
+				// The address space is fully explored. Cannot recursively split
+				if runningIdx == uint((dhtAddrByteCount*8)-1) {
+
+				} else {
+
+					if getBit(dhtAddr[:], runningIdx+1) {
+						prefix.SetBit(uint64(runningIdx + 1))
+					}
+
+					leftData, rightData := splitByPrefix(prefix, runningIdx+1, runningTree.data)
+
+					runningTree.left = makeInnerKTree()
+					runningTree.right = makeInnerKTree()
+
+					runningTree.left.data = leftData
+					runningTree.right.data = rightData
+				}
+
+			} else {
+				runningTree.data = append(runningTree.data, data)
+			}
+
 			break
 		} else {
 
@@ -73,18 +105,23 @@ func (tree *KTree) Insert(data NodeData) {
 	}
 }
 
-func (tree *KTree) LocateClosest(data []byte) []NodeData {
+// TODO: Implement splitting by prefix
+func splitByPrefix(prefix bitarray.BitArray, runningIdx uint, data []NodeData) (leftData []NodeData, rightData []NodeData) {
+	return nil, nil
+}
+
+func (tree *KTree) LocateClosest(data [dhtAddrByteCount]byte) []NodeData {
 	var runningTree *innerKTree
 	var runningIdx uint = 1
 
-	if !getBit(data, 0) {
+	if !getBit(data[:], 0) {
 		runningTree = tree.left
 	} else {
 		runningTree = tree.right
 	}
 
 	for {
-		runningBit := getBit(data, runningIdx)
+		runningBit := getBit(data[:], runningIdx)
 
 		if !runningBit {
 
