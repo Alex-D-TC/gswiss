@@ -9,7 +9,8 @@ import (
 func main() {
 }
 
-const dhtAddrByteCount uint = 20
+// TODO: DO NOT FORGET TO CHANGE IT BACK TO 20 AFTER TESTING YA DINGUS
+const dhtAddrByteCount uint = 1
 
 type KTree struct {
 	left  *innerKTree
@@ -74,11 +75,9 @@ func (tree *KTree) Insert(data NodeData) {
 
 				} else {
 
-					if getBit(dhtAddr[:], runningIdx+1) {
-						prefix.SetBit(uint64(runningIdx + 1))
-					}
+					leftData, rightData := splitByBit(runningIdx+1, runningTree.data)
 
-					leftData, rightData := splitByPrefix(prefix, runningIdx+1, runningTree.data)
+					runningTree.data = nil
 
 					runningTree.left = makeInnerKTree()
 					runningTree.right = makeInnerKTree()
@@ -105,9 +104,21 @@ func (tree *KTree) Insert(data NodeData) {
 	}
 }
 
-// TODO: Implement splitting by prefix
-func splitByPrefix(prefix bitarray.BitArray, runningIdx uint, data []NodeData) (leftData []NodeData, rightData []NodeData) {
-	return nil, nil
+// splitByBit takes the node data and splits it into two slices, depending on the value of the bit at the bitIdx location in the pastry address.
+// Nodes which have the bit set are part of the rightData slice and the rest are part of the leftData slice.
+func splitByBit(bitIdx uint, data []NodeData) (leftData []NodeData, rightData []NodeData) {
+	leftData = nil
+	rightData = nil
+
+	for _, nodeData := range data {
+		if !getBit(nodeData.dhtAddress[:], bitIdx) {
+			leftData = append(leftData, nodeData)
+		} else {
+			rightData = append(rightData, nodeData)
+		}
+	}
+
+	return
 }
 
 func (tree *KTree) LocateClosest(data [dhtAddrByteCount]byte) []NodeData {
@@ -145,11 +156,13 @@ func (tree *KTree) LocateClosest(data [dhtAddrByteCount]byte) []NodeData {
 
 }
 
+// getBit gets the value of the bit from the byte array data at the given index.
 func getBit(data []byte, index uint) bool {
 	byteIdx := index / 8
 	return getFromByte(data[byteIdx], uint8(index%8))
 }
 
+// getFromByte gets the value of the bit from within a given byte.
 func getFromByte(data byte, index uint8) bool {
 	var startMask byte = 1
 	var idx uint8 = 7
