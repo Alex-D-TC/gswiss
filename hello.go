@@ -68,8 +68,6 @@ func (tree *KTree) Insert(data NodeData) {
 			runningBit && runningTree.right == nil {
 
 			if uint(len(runningTree.data)) == tree.k {
-				// TODO: Add recursive branching if the K-Bucket is full
-
 				// The address space is fully explored. Cannot recursively split
 				if runningIdx == uint((dhtAddrByteCount*8)-1) {
 
