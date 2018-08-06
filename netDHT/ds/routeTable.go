@@ -7,21 +7,21 @@ import (
 
 type RouteTable struct {
 	k           uint16
-	sourceAddr  [netDHT.DhtAddrByteCount]byte
-	prefixTable [netDHT.DhtAddrByteCount * 8][]*netDHT.NodeData
+	sourceAddr  netDHT.DhtAddr
+	prefixTable [netDHT.BitSize][]*netDHT.NeighData
 }
 
-func MakeRouteTable(k uint16, sourceAddr [netDHT.DhtAddrByteCount]byte) *RouteTable {
+func MakeRouteTable(k uint16, sourceAddr netDHT.DhtAddr) *RouteTable {
 
-	var table [netDHT.DhtAddrByteCount * 8][]*netDHT.NodeData
+	var table [netDHT.BitSize][]*netDHT.NeighData
 	var i uint
 
 	for {
-		if i >= netDHT.DhtAddrByteCount*8 {
+		if i >= netDHT.BitSize {
 			break
 		}
 
-		table[i] = make([]*netDHT.NodeData, k)
+		table[i] = make([]*netDHT.NeighData, k)
 
 		i++
 	}
@@ -33,9 +33,9 @@ func MakeRouteTable(k uint16, sourceAddr [netDHT.DhtAddrByteCount]byte) *RouteTa
 	}
 }
 
-func (rTable *RouteTable) GetNearestK(addr [netDHT.DhtAddrByteCount]byte) []*netDHT.NodeData {
-	rightmostIdx, _ := util.GetCommonPrefixSize(rTable.sourceAddr[:], addr[:])
-	var result []*netDHT.NodeData
+func (rTable *RouteTable) GetNearestK(addr netDHT.DhtAddr) []*netDHT.NeighData {
+	rightmostIdx, _ := util.GetCommonPrefixSize(rTable.sourceAddr.Bytes(), addr.Bytes())
+	var result []*netDHT.NeighData
 
 	table := rTable.prefixTable
 
@@ -57,9 +57,9 @@ func (rTable *RouteTable) GetNearestK(addr [netDHT.DhtAddrByteCount]byte) []*net
 	return result
 }
 
-func (rTable *RouteTable) Insert(data *netDHT.NodeData) {
+func (rTable *RouteTable) Insert(data *netDHT.NeighData) {
 
-	idx, _ := util.GetCommonPrefixSize(rTable.sourceAddr[:], data.DhtAddress[:])
+	idx, _ := util.GetCommonPrefixSize(rTable.sourceAddr.Bytes(), data.DhtAddress.Bytes())
 	table := rTable.prefixTable
 
 	if uint16(len(table[idx])) == rTable.k {

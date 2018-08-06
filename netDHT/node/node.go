@@ -1,7 +1,6 @@
 package node
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"net"
 
@@ -12,28 +11,7 @@ import (
 type NodeState struct {
 	k       uint16
 	table   *ds.RouteTable
-	address [netDHT.DhtAddrByteCount]byte
-}
-
-func Bootstrap(k uint16, bootStrapperDHTAddress [netDHT.DhtAddrByteCount]byte, bootStrapperNetAddress net.Addr) NodeState {
-
-	conn, err := net.Dial("udp", bootStrapperNetAddress.String())
-	if err != nil {
-		fmt.Println(err)
-		panic(fmt.Sprintf("Connection to peer %s failed on network %s", bootStrapperNetAddress.String(), bootStrapperNetAddress.Network()))
-	}
-
-	fmt.Println(conn)
-
-	dhtAddress := makeAddress(bootStrapperDHTAddress[:])
-
-	table := ds.MakeRouteTable(k, dhtAddress)
-
-	return NodeState{
-		k:       k,
-		address: dhtAddress,
-		table:   table,
-	}
+	address netDHT.DhtAddr
 }
 
 func ListenUDP(address net.UDPAddr, handler func([]byte)) {
@@ -58,7 +36,7 @@ func ListenUDP(address net.UDPAddr, handler func([]byte)) {
 	}
 }
 
-func SendMessage(source [netDHT.DhtAddrByteCount]byte, dest netDHT.NodeData, msg NetMessage) bool {
+func SendMessage(source netDHT.DhtAddr, dest *netDHT.NeighData, msg NetMessage) bool {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", dest.NetAddress.String())
 	if err != nil {
@@ -76,7 +54,7 @@ func SendMessage(source [netDHT.DhtAddrByteCount]byte, dest netDHT.NodeData, msg
 	var message []byte
 
 	message = append(message, byte(msg.MsgType))
-	message = append(message, source[:]...)
+	message = append(message, source.Bytes()[:]...)
 	message = append(message, msg.Payload...)
 
 	written, err := conn.Write(message)
@@ -95,22 +73,14 @@ func receiveMessage(conn net.Conn) {
 
 }
 
-func makeAddress(entropySource []byte) [netDHT.DhtAddrByteCount]byte {
-
-	hash := sha256.Sum256(entropySource)
-	var dhtAddress [netDHT.DhtAddrByteCount]byte
-	copy(dhtAddress[:], hash[:netDHT.DhtAddrByteCount])
-
-	return dhtAddress
-}
-
 const (
 	locateMsg = 0
 	sendMsg   = 1
+	joinMsg   = 2
 )
 
 type NetMessage struct {
 	MsgType uint8
 	Payload []byte
-	Source  [netDHT.DhtAddrByteCount]byte
+	Source  [netDHT.BitSize * 8]byte
 }

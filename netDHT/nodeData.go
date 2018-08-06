@@ -1,20 +1,47 @@
 package netDHT
 
 import (
+	"math/big"
 	"net"
 )
 
 const (
 	// TODO: DO NOT FORGET TO CHANGE IT BACK TO 20 AFTER TESTING YA DINGUS
-	DhtAddrByteCount = 1
+	BitSize = 8
 )
 
-type NodeData struct {
-	DhtAddress [DhtAddrByteCount]byte
+type NeighData struct {
+	DhtAddress DhtAddr
 	NetAddress net.Addr
-	connection net.Conn
 }
 
-func (data *NodeData) Cleanup() {
-	data.connection.Close()
+type DhtAddr struct {
+	Addr    *big.Int
+	BitSize uint16
+	Mod     *big.Int
+}
+
+func MakeDhtAddr(addr []byte, bitSize uint16) DhtAddr {
+	mod := big.NewInt(2)
+	mod = mod.Exp(mod, big.NewInt(int64(bitSize)), nil)
+
+	address := big.NewInt(0)
+	address = address.SetBytes(addr)
+	address = address.Mod(address, mod)
+
+	return DhtAddr{
+		Addr:    address,
+		BitSize: bitSize,
+		Mod:     mod,
+	}
+}
+
+func (addr DhtAddr) Bytes() []byte {
+
+	result := make([]byte, BitSize/8)
+
+	copyIdx := (BitSize / 8) - len(result)
+	copy(result[copyIdx:], addr.Addr.Bytes())
+
+	return result
 }
