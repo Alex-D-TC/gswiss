@@ -22,7 +22,7 @@ func MakeFingerTable(bitCount uint16, siteAddr netDHT.DhtAddr) FingerTable {
 
 func emptyTable(bitCount uint16, siteAddr netDHT.DhtAddr) map[*big.Int]*netDHT.NeighData {
 	pow := big.NewInt(1)
-	var table map[*big.Int]*netDHT.NeighData
+	table := make(map[*big.Int]*netDHT.NeighData)
 
 	var i uint16
 	for {
@@ -30,7 +30,7 @@ func emptyTable(bitCount uint16, siteAddr netDHT.DhtAddr) map[*big.Int]*netDHT.N
 			break
 		}
 
-		table[siteAddr.Addr.Add(siteAddr.Addr, pow)] = nil
+		table[siteAddr.RawIncrementBy(pow)] = nil
 
 		pow = pow.Mul(pow, pow)
 		i++
@@ -49,7 +49,7 @@ func (table *FingerTable) GetClosest(siteAddr netDHT.DhtAddr) *netDHT.NeighData 
 			break
 		}
 
-		runningAddr := table.siteAddr.Addr.Add(table.siteAddr.Addr, pow)
+		runningAddr := table.siteAddr.RawIncrementBy(pow)
 		if runningAddr.Cmp(siteAddr.Addr) == 1 {
 			return table.table[runningAddr]
 		}
@@ -59,7 +59,7 @@ func (table *FingerTable) GetClosest(siteAddr netDHT.DhtAddr) *netDHT.NeighData 
 	}
 
 	// default to returning the successor
-	return table.table[table.siteAddr.Addr.Add(table.siteAddr.Addr, big.NewInt(1))]
+	return table.table[table.siteAddr.RawIncrementBy(big.NewInt(1))]
 }
 
 func (table *FingerTable) Update(tableIdx *big.Int, newData *netDHT.NeighData) {

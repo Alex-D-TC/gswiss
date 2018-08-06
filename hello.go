@@ -2,24 +2,22 @@ package main
 
 import (
 	"fmt"
-	"net"
+
+	"github.com/alex-d-tc/gswiss/netDHT"
+	"github.com/alex-d-tc/gswiss/util/netUtil"
 
 	"github.com/alex-d-tc/gswiss/netDHT/node"
 )
 
 func main() {
 
-	addr, err := net.ResolveUDPAddr("udp", ":8080")
+	state, err := node.InitCluster(netUtil.NetAddr{Address: ":8080", ConnType: "udp"}, netDHT.BitSize)
 	if err != nil {
 		fmt.Println(err)
-		panic("")
 	}
 
-	node.ListenUDP(*addr, handleConn)
-}
-
-func handleConn(payload []byte) {
-
-	fmt.Println("UDP packet received")
-	fmt.Println(payload)
+	fmt.Println(state)
+	for {
+		// just run
+	}
 }

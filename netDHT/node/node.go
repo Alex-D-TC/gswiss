@@ -1,21 +1,63 @@
 package node
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net"
+
+	"github.com/alex-d-tc/gswiss/util/netUtil"
 
 	"github.com/alex-d-tc/gswiss/netDHT"
 	"github.com/alex-d-tc/gswiss/netDHT/ds"
 )
 
 type NodeState struct {
-	k       uint16
-	table   *ds.RouteTable
-	address netDHT.DhtAddr
+	successor   *netDHT.NeighData
+	predecessor *netDHT.NeighData
+	table       *ds.FingerTable
+	address     netDHT.DhtAddr
 }
 
-func ListenUDP(address net.UDPAddr, handler func([]byte)) {
-	conn, err := net.ListenUDP("udp", &address)
+func makeAddress(entropySource []byte, byteCount uint16) []byte {
+	hash := sha256.Sum256(entropySource)
+	return hash[:byteCount]
+}
+
+func InitCluster(listenAddr netUtil.NetAddr, bitCount uint16) (*NodeState, error) {
+
+	rawDhtAddr := makeAddress([]byte(listenAddr.String()), bitCount/8)
+	siteAddr := netDHT.MakeDhtAddr(rawDhtAddr, bitCount)
+	fingerTable := ds.MakeFingerTable(bitCount, siteAddr)
+
+	addr, err := net.ResolveUDPAddr("udp", listenAddr.String())
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	go ListenUDP(addr, handleMsg)
+
+	fmt.Println("Cluster initialised")
+
+	return &NodeState{
+		successor:   nil,
+		predecessor: nil,
+		table:       &fingerTable,
+		address:     siteAddr,
+	}, nil
+}
+
+func BootStrap(bootStrapAddr netUtil.NetAddr) (*NodeState, error) {
+	return nil, nil
+}
+
+func handleMsg(payload []byte) {
+	fmt.Println("UDP packet received")
+	fmt.Println(payload)
+}
+
+func ListenUDP(address *net.UDPAddr, handler func([]byte)) {
+	conn, err := net.ListenUDP("udp", address)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -23,6 +65,8 @@ func ListenUDP(address net.UDPAddr, handler func([]byte)) {
 	defer conn.Close()
 
 	for {
+
+		fmt.Println(fmt.Sprintf("Listening on interface %s", address.String()))
 
 		var payload [4096]byte
 
@@ -36,7 +80,7 @@ func ListenUDP(address net.UDPAddr, handler func([]byte)) {
 	}
 }
 
-func SendMessage(source netDHT.DhtAddr, dest *netDHT.NeighData, msg NetMessage) bool {
+func SendMessageUDP(source netDHT.DhtAddr, dest *netDHT.NeighData, msg NetMessage) bool {
 
 	udpAddr, err := net.ResolveUDPAddr("udp", dest.NetAddress.String())
 	if err != nil {
@@ -65,12 +109,6 @@ func SendMessage(source netDHT.DhtAddr, dest *netDHT.NeighData, msg NetMessage) 
 
 	fmt.Println(fmt.Sprintf("Written %d bytes", written))
 	return true
-}
-
-func receiveMessage(conn net.Conn) {
-	var message []byte
-	conn.Read(message)
-
 }
 
 const (

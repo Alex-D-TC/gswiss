@@ -45,3 +45,7 @@ func (addr DhtAddr) Bytes() []byte {
 
 	return result
 }
+
+func (addr DhtAddr) RawIncrementBy(add *big.Int) *big.Int {
+	return addr.Addr.Mod(addr.Addr.Add(addr.Addr, add), addr.Mod)
+}
